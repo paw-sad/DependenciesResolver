@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31229.75
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DependenciesResolver", "DependenciesResolver\DependenciesResolver.csproj", "{58C316E5-1BB0-4E67-93D1-7F03AEF7D578}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{F87F9D1E-8E17-4F32-A5A8-3FD9CCEF8105}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{689068BB-8AE4-4E81-856D-52F8AB796321}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{58C316E5-1BB0-4E67-93D1-7F03AEF7D578}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58C316E5-1BB0-4E67-93D1-7F03AEF7D578}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58C316E5-1BB0-4E67-93D1-7F03AEF7D578}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58C316E5-1BB0-4E67-93D1-7F03AEF7D578}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F87F9D1E-8E17-4F32-A5A8-3FD9CCEF8105}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F87F9D1E-8E17-4F32-A5A8-3FD9CCEF8105}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F87F9D1E-8E17-4F32-A5A8-3FD9CCEF8105}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F87F9D1E-8E17-4F32-A5A8-3FD9CCEF8105}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D00EFEB5-3FF2-462C-9ED9-688248331688}
+	EndGlobalSection
+EndGlobal
