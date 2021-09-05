@@ -6,7 +6,7 @@ namespace Tests
 {
     public partial class Tests
     {
-        public class TestNpmRepositoryClient : INmpRepositoryClient
+        public class TestNpmRepositoryClient : INpmRepositoryClient
         {
             public  async Task<string> GetMetadataForPackage(string packageName, string packageVersion)
             {

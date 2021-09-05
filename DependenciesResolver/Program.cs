@@ -16,7 +16,7 @@ namespace DependenciesResolver
             var packageVersion = Console.ReadLine();
 
             var dependenciesResolver =
-                new DependenciesResolver(new NmpRepositoryClient(@"https://registry.npmjs.org", new HttpClient()), new ConsoleLogger());
+                new DependenciesResolver(new NpmRepositoryClient(@"https://registry.npmjs.org", new HttpClient()), new ConsoleLogger());
 
             var dependenciesTree = await dependenciesResolver.BuildDependenciesTree(packageName, packageVersion);
 

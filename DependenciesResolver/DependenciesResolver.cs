@@ -9,20 +9,19 @@ namespace DependenciesResolver
 {
     public class DependenciesResolver
     {
-        private readonly INmpRepositoryClient _repositoryClient;
+        private readonly INpmRepositoryClient _repositoryClient;
         private readonly ILogger _logger;
 
-        public DependenciesResolver(INmpRepositoryClient repositoryClient)
+        public DependenciesResolver(INpmRepositoryClient repositoryClient)
         {
             _repositoryClient = repositoryClient;
         }
 
-        public DependenciesResolver(INmpRepositoryClient repositoryClient, ILogger logger)
+        public DependenciesResolver(INpmRepositoryClient repositoryClient, ILogger logger)
         {
             _repositoryClient = repositoryClient;
             _logger = logger;
         }
-
 
         public async Task<Package> BuildDependenciesTree(string packageName, string packageVersion)
         {
@@ -32,55 +31,63 @@ namespace DependenciesResolver
                 Version = packageVersion
             };
 
-            await BuildTree(startingPackage);
+            var packageInfo = await GetPackageVersionsInfo(packageName);
+            var packageVersionInfo = packageInfo.FirstOrDefault(x => x.Version == packageVersion);
+
+            foreach (var dependency in packageVersionInfo.Dependencies)
+            {
+               startingPackage.Dependencies.Add(await BuildTree(dependency));
+            }
 
             return startingPackage;
         }
 
-        private async Task BuildTree(Package package)
+        private async Task<Package> BuildTree(Dependency dependency)
         {
-            _logger?.Log($"Building tree for a package: {package.Name} {package.Version}");
+            _logger?.Log($"Building tree for a package: {dependency.Name} {dependency.VersionRange}");
 
-            var packageDependencies = await GetDependencies(package.Name, package.Version);
-            foreach (var dependency in packageDependencies)
+            var dependencyInfo = await GetPackageVersionsInfo(dependency.Name);
+            var packageInfo = GetMaxSatisfyingPackageVersionInfo(dependency, dependencyInfo);
+            var package = new Package {Name = dependency.Name, Version = packageInfo.Version };
+
+            if (packageInfo.Dependencies != null && packageInfo.Dependencies.Any())
             {
-                var highestVersion = await GetHighestVersionOfPackageThatFulfillsVersionString(dependency.Name, dependency.VersionRange);
-                var dep = new Package { Name = dependency.Name, Version = highestVersion };
-
-                await BuildTree(dep);
-                package.Dependencies.Add(dep);
-            }
-        }
-
-        public async Task<IEnumerable<Dependency>> GetDependencies(string packageName, string packageVersion)
-        {
-            var jsonString = await _repositoryClient.GetMetadataForPackage(packageName, packageVersion);
-            var dependenciesJObject = JObject.Parse(jsonString)["dependencies"] as JObject;
-            if (dependenciesJObject == null)
-            {
-                return new Dependency[0];
-            }
-
-            var dependencies = dependenciesJObject.Properties()
-                .Select(x => new Dependency
+                foreach (var d in packageInfo.Dependencies)
                 {
-                    Name = x.Name,
-                    VersionRange = x.Value.ToObject<string>()
-                }).ToList();
+                    package.Dependencies.Add(await BuildTree(d));
+                }
+            }
 
-            return dependencies;
+            return package;
         }
 
-        public async Task<string> GetHighestVersionOfPackageThatFulfillsVersionString(string packageName, string versionString)
+        private static PackageVersion GetMaxSatisfyingPackageVersionInfo(Dependency dependency, IEnumerable<PackageVersion> dependencyInfo)
+        {
+            var range = new SemanticVersioning.Range(dependency.VersionRange);
+            var versions = dependencyInfo.Select(x => x.Version).ToList();
+            var maxSatisfying =  range.MaxSatisfying(versions);
+
+            return dependencyInfo.FirstOrDefault(x => x.Version == maxSatisfying);
+        }
+
+        public async Task<IEnumerable<PackageVersion>> GetPackageVersionsInfo(string packageName)
         {
             var jsonString = await _repositoryClient.GetMetadataForPackage(packageName);
             var versionsJObject = JObject.Parse(jsonString)["versions"] as JObject;
             var packageVersions = versionsJObject.Properties()
-                .Select(x => x.Name).ToList();
-            
-            var range = new SemanticVersioning.Range(versionString);
-            return range.MaxSatisfying(packageVersions);
+                .Select(x => new PackageVersion
+                {
+                    Version = x.Name,
+                    Dependencies = ((x.Value as JObject)["dependencies"] as JObject)?.Properties()
+                    .Select(d => new Dependency
+                    {
+                        Name = d.Name,
+                        VersionRange = d.Value.ToObject<string>()
+                    })
+                    .ToList()
+                }).ToList();
+
+            return packageVersions;
         }
     }
-
 }

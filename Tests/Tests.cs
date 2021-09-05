@@ -12,50 +12,77 @@ namespace Tests
     public partial class Tests
     {
         [Fact]
-        public async Task GetDependenciesForSpecificPackageVersion()
+        public async Task GetPackageInfo()
         {
             // arrange
-            var packageName = "registry-url";
-            var packageVersion = "5.0.0";
+            var packageName = "some-package";
 
-            var npmRepoClientMock = new Mock<INmpRepositoryClient>();
-            var responseContent = await File.ReadAllTextAsync("./NpmClientResponses/registry-url@5.0.0.json");
-            npmRepoClientMock.Setup(x => x.GetMetadataForPackage(packageName, packageVersion))
-                .Returns(Task.FromResult(responseContent));
-
-            // act 
-            var dependencies = await
-                new DependenciesResolver.DependenciesResolver(npmRepoClientMock.Object).GetDependencies(packageName, packageVersion);
-
-            // assert
-            dependencies.ShouldBeEquivalentTo(new List<Dependency>
-            {
-                new Dependency
-                {
-                    Name = "rc",
-                    VersionRange = "^1.2.8"
-                }
-            });
-        }
-
-        [Fact]
-        public async Task GetHighestVersionOfPackageThatFulfillsVersionString()
-        {
-            // arrange
-            var packageName = "rc";
-            var packageVersion = "^1.0.1";
-
-            var npmRepoClientMock = new Mock<INmpRepositoryClient>();
-            var responseContent = await File.ReadAllTextAsync("./NpmClientResponses/rc.json");
+            var npmRepoClientMock = new Mock<INpmRepositoryClient>();
+            var responseContent = await File.ReadAllTextAsync("./NpmClientResponses/some-package.json");
             npmRepoClientMock.Setup(x => x.GetMetadataForPackage(packageName))
                 .Returns(Task.FromResult(responseContent));
-            
+            var expectedVersions = new List<PackageVersion>
+            {
+                new PackageVersion
+                {
+                    Version = "0.0.0",
+                    Dependencies = new List<Dependency>
+                    {
+                        new Dependency
+                        {
+                            Name = "tape",
+                            VersionRange = "~1.0.4"
+                        },
+                        new Dependency
+                        {
+                            Name = "tap",
+                            VersionRange = "~0.4.0"
+                        }
+                    }
+                },
+                new PackageVersion
+                {
+                    Version = "0.2.0",
+                    Dependencies = new List<Dependency>
+                    {
+                        new Dependency
+                        {
+                            Name = "tape",
+                            VersionRange = "~1.0.4"
+                        },
+                        new Dependency
+                        {
+                            Name = "tap",
+                            VersionRange = "~0.4.0"
+                        }
+                    }
+                },
+                new PackageVersion
+                {
+                    Version = "1.0.0",
+                    Dependencies = new List<Dependency>
+                    {
+                        new Dependency
+                        {
+                            Name = "tape",
+                            VersionRange = "~1.0.4"
+                        },
+                        new Dependency
+                        {
+                            Name = "tap",
+                            VersionRange = "~0.4.0"
+                        }
+                    }
+                }
+            };
+
             // act 
-            var version = await
-                new DependenciesResolver.DependenciesResolver(npmRepoClientMock.Object).GetHighestVersionOfPackageThatFulfillsVersionString(packageName, packageVersion);
+            var versions = await
+                new DependenciesResolver.DependenciesResolver(npmRepoClientMock.Object).GetPackageVersionsInfo(
+                    packageName);
 
             // assert
-            version.ShouldBe("1.2.8");
+            versions.ShouldBeEquivalentTo(expectedVersions);
         }
 
         [Fact]
@@ -103,9 +130,9 @@ namespace Tests
             };
 
             var dependenciesResolver = new DependenciesResolver.DependenciesResolver(new TestNpmRepositoryClient());
-               
+
             // act 
-           var dependencies = await dependenciesResolver.BuildDependenciesTree(packageName, packageVersion);
+            var dependencies = await dependenciesResolver.BuildDependenciesTree(packageName, packageVersion);
 
 
             // assert

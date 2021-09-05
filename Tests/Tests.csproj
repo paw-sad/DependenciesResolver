@@ -26,6 +26,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="NpmClientResponses\some-package.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="NpmClientResponses\rc@1.2.8.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

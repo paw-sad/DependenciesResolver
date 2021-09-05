@@ -13,7 +13,12 @@ namespace DependenciesResolver
     {
         public string Name { get; set; }
         public string Version { get; set; }
-
         public List<Package> Dependencies { get; set; } = new List<Package>();
+    }
+
+    public class PackageVersion
+    {
+        public string Version { get; set; }
+        public IEnumerable<Dependency> Dependencies { get; set; } = new List<Dependency>();
     }
 }
