@@ -1,9 +1,9 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using DependenciesResolver;
-using Moq;
+using DependenciesResolver.NpmRepositoryIntegration;
 using Shouldly;
 using Xunit;
 
@@ -12,15 +12,11 @@ namespace Tests
     public partial class Tests
     {
         [Fact]
-        public async Task GetPackageInfo()
+        public async Task CanParseNpmRepositoryJsonResponse()
         {
             // arrange
-            var packageName = "some-package";
-
-            var npmRepoClientMock = new Mock<INpmRepositoryClient>();
             var responseContent = await File.ReadAllTextAsync("./NpmClientResponses/some-package.json");
-            npmRepoClientMock.Setup(x => x.GetMetadataForPackage(packageName))
-                .Returns(Task.FromResult(responseContent));
+       
             var expectedVersions = new List<PackageVersionInfo>
             {
                 new PackageVersionInfo
@@ -77,9 +73,8 @@ namespace Tests
             };
 
             // act 
-            var versions = await
-                new DependenciesResolver.DependenciesResolver(npmRepoClientMock.Object).GetPackageVersionsInfo(
-                    packageName);
+            var versions =
+                NpmRepositoryJsonParser.GetPackageVersionsInfo(responseContent);
 
             // assert
             versions.ShouldBeEquivalentTo(expectedVersions);
@@ -115,15 +110,15 @@ namespace Tests
             rcPackage.Dependencies.Add(
                 new DependencyTreeNode
                 {
-                    Name = "ini",
-                    Version = "1.3.8",
+                    Name = "minimist",
+                    Version = "1.2.5",
                     Parent = rcPackage
                 });
             rcPackage.Dependencies.Add(
                 new DependencyTreeNode
                 {
-                    Name = "minimist",
-                    Version = "1.2.5",
+                    Name = "ini",
+                    Version = "1.3.8",
                     Parent = rcPackage
                 });
             rcPackage.Dependencies.Add(
@@ -134,14 +129,18 @@ namespace Tests
                     Parent = rcPackage
                 });
 
-            var dependenciesResolver = new DependenciesResolver.DependenciesResolver(new TestNpmRepositoryClient());
+            var dependenciesResolver = new DependenciesResolver.DependenciesResolver(new PackageRepositoryFacade(new TestNpmRepositoryClient()));
 
             // act 
             var dependencies = await dependenciesResolver.BuildDependenciesTree(packageName, packageVersion, 2);
 
-
-            // assert
-            dependencies.ShouldBeEquivalentTo(expectedDependenciesTree);
+            // assert trees are equivalent (can differ in nodes order)
+            dependencies.Name.ShouldBe(expectedDependenciesTree.Name);
+            dependencies.Version.ShouldBe(expectedDependenciesTree.Version);
+            dependencies.Dependencies.First().Name.ShouldBe(expectedDependenciesTree.Dependencies.First().Name);
+            dependencies.Dependencies.First().Version.ShouldBe(expectedDependenciesTree.Dependencies.First().Version);
+            dependencies.Dependencies.First().Dependencies.Select(x => new {x.Name, x.Version })
+                .ShouldBeEquivalentTo(expectedDependenciesTree.Dependencies.First().Dependencies.Select(x => new { x.Name, x.Version }));
         }
     }
 }

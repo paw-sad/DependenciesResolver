@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace DependenciesResolver
+namespace DependenciesResolver.NpmRepositoryIntegration
 {
-    public class SemanticVersioningWrapper
+    public class SemanticVersionWrapper
     {
         public static PackageVersionInfo GetMaxSatisfyingPackageVersionInfo(Dependency dependency, IEnumerable<PackageVersionInfo> dependencyInfo)
         {

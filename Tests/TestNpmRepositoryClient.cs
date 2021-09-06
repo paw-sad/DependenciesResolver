@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
 using DependenciesResolver;
+using DependenciesResolver.NpmRepositoryIntegration;
 
 namespace Tests
 {

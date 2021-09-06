@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading.Tasks;
+using DependenciesResolver.NpmRepositoryIntegration;
 using Newtonsoft.Json;
 
 namespace DependenciesResolver
@@ -18,7 +19,7 @@ namespace DependenciesResolver
             var packageName = "express";
             var packageVersion = "4.17.0";
             var dependenciesResolver =
-                new DependenciesResolver(new NpmRepositoryClient(@"https://registry.npmjs.org", new HttpClient()));
+                new DependenciesResolver(new PackageRepositoryFacade(new NpmRepositoryClient(@"https://registry.npmjs.org", new HttpClient())));
             var sw = new Stopwatch();
             
             sw.Start();

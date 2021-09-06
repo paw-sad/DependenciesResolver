@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using System.Web;
 
-namespace DependenciesResolver
+namespace DependenciesResolver.NpmRepositoryIntegration
 {
     public interface INpmRepositoryClient
     {
