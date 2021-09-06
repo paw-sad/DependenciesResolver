@@ -16,14 +16,14 @@ namespace DependenciesResolver
             
             //Console.WriteLine("Give package version");
             //var packageVersion = Console.ReadLine();
-            var packageName = "express";
-            var packageVersion = "4.17.0";
+            var packageName = "snyk";
+            var packageVersion = "1.681.0";
             var dependenciesResolver =
-                new DependenciesResolver(new PackageRepositoryFacade(new NpmRepositoryClient(@"https://registry.npmjs.org", new HttpClient())));
+                new DependenciesResolver(new PackageRepositoryFacade(new NpmRepositoryCacheClient(new NpmRepositoryClient(@"https://registry.npmjs.org", new HttpClient()))), new ConsoleLogger());
             var sw = new Stopwatch();
             
             sw.Start();
-            var dependenciesTree = await dependenciesResolver.BuildDependenciesTree(packageName, packageVersion, 8);
+            var dependenciesTree = await dependenciesResolver.BuildDependenciesTree(packageName, packageVersion, 16);
             sw.Stop();
 
             Console.WriteLine(JsonConvert.SerializeObject(dependenciesTree, Formatting.Indented));
