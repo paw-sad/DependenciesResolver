@@ -21,9 +21,9 @@ namespace Tests
             var responseContent = await File.ReadAllTextAsync("./NpmClientResponses/some-package.json");
             npmRepoClientMock.Setup(x => x.GetMetadataForPackage(packageName))
                 .Returns(Task.FromResult(responseContent));
-            var expectedVersions = new List<PackageVersion>
+            var expectedVersions = new List<PackageVersionInfo>
             {
-                new PackageVersion
+                new PackageVersionInfo
                 {
                     Version = "0.0.0",
                     Dependencies = new List<Dependency>
@@ -40,7 +40,7 @@ namespace Tests
                         }
                     }
                 },
-                new PackageVersion
+                new PackageVersionInfo
                 {
                     Version = "0.2.0",
                     Dependencies = new List<Dependency>
@@ -57,7 +57,7 @@ namespace Tests
                         }
                     }
                 },
-                new PackageVersion
+                new PackageVersionInfo
                 {
                     Version = "1.0.0",
                     Dependencies = new List<Dependency>
@@ -92,47 +92,52 @@ namespace Tests
             var packageName = "registry-url";
             var packageVersion = "3.0.3";
 
-            var expectedDependenciesTree = new Package
+            var expectedDependenciesTree = new DependencyTreeNode
             {
                 Name = "registry-url",
                 Version = "3.0.3",
-                Dependencies = new List<Package>()
-                {
-                    new Package
-                    {
-                        Name = "rc",
-                        Version = "1.2.8",
-                        Dependencies = new List<Package>()
-                        {
-                            new Package
-                            {
-                                Name = "deep-extend",
-                                Version = "0.6.0"
-                            },
-                            new Package
-                            {
-                                Name = "ini",
-                                Version = "1.3.8"
-                            },
-                            new Package
-                            {
-                                Name = "minimist",
-                                Version = "1.2.5"
-                            },
-                            new Package
-                            {
-                                Name = "strip-json-comments",
-                                Version = "2.0.1"
-                            },
-                        }
-                    }
-                }
             };
+            var rcPackage = new DependencyTreeNode
+            {
+                Name = "rc",
+                Version = "1.2.8",
+                Parent = expectedDependenciesTree,
+            };
+            expectedDependenciesTree.Dependencies.Add(rcPackage);
+
+            rcPackage.Dependencies.Add(
+                new DependencyTreeNode
+                {
+                    Name = "deep-extend",
+                    Version = "0.6.0",
+                    Parent = rcPackage
+                });
+            rcPackage.Dependencies.Add(
+                new DependencyTreeNode
+                {
+                    Name = "ini",
+                    Version = "1.3.8",
+                    Parent = rcPackage
+                });
+            rcPackage.Dependencies.Add(
+                new DependencyTreeNode
+                {
+                    Name = "minimist",
+                    Version = "1.2.5",
+                    Parent = rcPackage
+                });
+            rcPackage.Dependencies.Add(
+                new DependencyTreeNode
+                {
+                    Name = "strip-json-comments",
+                    Version = "2.0.1",
+                    Parent = rcPackage
+                });
 
             var dependenciesResolver = new DependenciesResolver.DependenciesResolver(new TestNpmRepositoryClient());
 
             // act 
-            var dependencies = await dependenciesResolver.BuildDependenciesTree(packageName, packageVersion);
+            var dependencies = await dependenciesResolver.BuildDependenciesTree(packageName, packageVersion, 2);
 
 
             // assert

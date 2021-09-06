@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using SemanticVersioning;
 
 namespace DependenciesResolver
 {
@@ -11,6 +11,8 @@ namespace DependenciesResolver
     {
         private readonly INpmRepositoryClient _repositoryClient;
         private readonly ILogger _logger;
+        private readonly BlockingCollection<DependencyResolverTask> _dependenciesQueue = new BlockingCollection<DependencyResolverTask>();
+        private int _resolvedTasks = 0;
 
         public DependenciesResolver(INpmRepositoryClient repositoryClient)
         {
@@ -23,9 +25,9 @@ namespace DependenciesResolver
             _logger = logger;
         }
 
-        public async Task<Package> BuildDependenciesTree(string packageName, string packageVersion)
+        public async Task<DependencyTreeNode> BuildDependenciesTree(string packageName, string packageVersion, int concurrencyLevel)
         {
-            var startingPackage = new Package
+            var startingDependencyTreeNode = new DependencyTreeNode
             {
                 Name = packageName,
                 Version = packageVersion
@@ -36,58 +38,85 @@ namespace DependenciesResolver
 
             foreach (var dependency in packageVersionInfo.Dependencies)
             {
-               startingPackage.Dependencies.Add(await BuildTree(dependency));
+                _resolvedTasks++;
+                _dependenciesQueue.Add(new DependencyResolverTask
+                {
+                    Parent = startingDependencyTreeNode,
+                    Dependency = dependency
+                });
             }
 
-            return startingPackage;
+            var tasks = new List<Task>();
+
+            for (int i = 0; i < concurrencyLevel; i++)
+            {
+                tasks.Add(CreateWorker(i + 1));
+            }
+
+            Task.WaitAll(tasks.ToArray());
+
+            return startingDependencyTreeNode;
         }
 
-        private async Task<Package> BuildTree(Dependency dependency)
+        private async Task BuildTree(Dependency dependency, DependencyTreeNode parent)
         {
             _logger?.Log($"Building tree for a package: {dependency.Name} {dependency.VersionRange}");
 
             var dependencyInfo = await GetPackageVersionsInfo(dependency.Name);
-            var packageInfo = GetMaxSatisfyingPackageVersionInfo(dependency, dependencyInfo);
-            var package = new Package {Name = dependency.Name, Version = packageInfo.Version };
+            var packageInfo = SemanticVersioningWrapper.GetMaxSatisfyingPackageVersionInfo(dependency, dependencyInfo);
+            var package = new DependencyTreeNode { Name = dependency.Name, Version = packageInfo.Version, Parent = parent };
+
+            parent.Dependencies.Add(package);
 
             if (packageInfo.Dependencies != null && packageInfo.Dependencies.Any())
             {
                 foreach (var d in packageInfo.Dependencies)
                 {
-                    package.Dependencies.Add(await BuildTree(d));
+                    _resolvedTasks++;
+                    _dependenciesQueue.Add(new DependencyResolverTask
+                    {
+                        Parent = package,
+                        Dependency = d
+                    });
                 }
             }
-
-            return package;
         }
 
-        private static PackageVersion GetMaxSatisfyingPackageVersionInfo(Dependency dependency, IEnumerable<PackageVersion> dependencyInfo)
-        {
-            var range = new SemanticVersioning.Range(dependency.VersionRange);
-            var versions = dependencyInfo.Select(x => x.Version).ToList();
-            var maxSatisfying =  range.MaxSatisfying(versions);
-
-            return dependencyInfo.FirstOrDefault(x => x.Version == maxSatisfying);
-        }
-
-        public async Task<IEnumerable<PackageVersion>> GetPackageVersionsInfo(string packageName)
+        public async Task<IEnumerable<PackageVersionInfo>> GetPackageVersionsInfo(string packageName)
         {
             var jsonString = await _repositoryClient.GetMetadataForPackage(packageName);
-            var versionsJObject = JObject.Parse(jsonString)["versions"] as JObject;
-            var packageVersions = versionsJObject.Properties()
-                .Select(x => new PackageVersion
-                {
-                    Version = x.Name,
-                    Dependencies = ((x.Value as JObject)["dependencies"] as JObject)?.Properties()
-                    .Select(d => new Dependency
-                    {
-                        Name = d.Name,
-                        VersionRange = d.Value.ToObject<string>()
-                    })
-                    .ToList()
-                }).ToList();
+            return NpmRepositoryJsonParser.GetPackageVersionsInfo(jsonString);
+        }
 
-            return packageVersions;
+        private async Task CreateWorker(int id)
+        {
+            await Task.Run(async () =>
+            {
+                while (!_dependenciesQueue.IsCompleted)
+                {
+                    DependencyResolverTask data = null;
+                    try // when the queue is completed by other consumer we can get an exception here
+                    {
+                        data = _dependenciesQueue.Take();
+                    }
+                    catch (InvalidOperationException) { }
+
+                    if (data != null)
+                    {
+                        _logger?.Log($"Consumer {id} processing dependency: {data.Dependency.Name}");
+                        await BuildTree(data.Dependency, data.Parent);
+
+                        _resolvedTasks--;
+
+                        _logger?.Log(_resolvedTasks.ToString());
+
+                        if (_resolvedTasks == 0)
+                        {
+                            _dependenciesQueue.CompleteAdding();
+                        }
+                    }
+                }
+            });
         }
     }
 }
